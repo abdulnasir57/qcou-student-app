@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f6b4f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="QCOU-B02" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" href="icon.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <title>QCOU-B02 · Student Manager</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Login gate (shown only in live mode when signed out) -->
+  <div id="login" class="login hidden">
+    <form id="loginForm" class="login-card">
+      <div class="login-logo">۞</div>
+      <h1>QCOU-B02</h1>
+      <p class="muted">Student Management · sign in to continue</p>
+      <input id="email" type="email" placeholder="Email" autocomplete="username" required />
+      <input id="password" type="password" placeholder="Password" autocomplete="current-password" required />
+      <button type="submit">Sign in</button>
+      <p id="loginError" class="error"></p>
+    </form>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <button class="back-btn" id="backBtn" aria-label="Back">‹</button>
+      <div class="brand">
+        <span class="brand-mark">۞</span>
+        <div>
+          <strong id="brandTitle">QCOU-B02</strong>
+          <small id="brandSub">Student Manager</small>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span id="modeBadge" class="badge-mode">demo</span>
+        <button id="signOutBtn" class="icon-btn hidden" title="Sign out">⎋</button>
+      </div>
+    </header>
+
+    <nav class="tabbar">
+      <button class="tab active" data-view="roster">👥 Students</button>
+      <button class="tab" data-view="dashboard">📊 Dashboard</button>
+    </nav>
+
+    <!-- ROSTER VIEW -->
+    <section id="rosterView" class="view">
+      <div class="controls">
+        <input id="search" type="search" placeholder="Search name, ID, city, profession…" />
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+        </select>
+        <select id="sortBy">
+          <option value="name">Sort: Name</option>
+          <option value="att">Sort: Attendance %</option>
+          <option value="nabawi">Sort: Nabawi score</option>
+        </select>
+      </div>
+      <div id="rosterCount" class="roster-count"></div>
+      <div id="roster" class="roster"></div>
+    </section>
+
+    <!-- DETAIL VIEW -->
+    <section id="detailView" class="view hidden"></section>
+
+    <!-- DASHBOARD VIEW -->
+    <section id="dashboardView" class="view hidden"></section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Supabase config (optional). If present and filled, app runs in LIVE mode. -->
+  <script src="config.js" onerror="window.__noConfig=true"></script>
+  <!-- Supabase client (only used in live mode) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
