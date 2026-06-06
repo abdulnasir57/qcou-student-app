@@ -470,8 +470,8 @@ function populateData(students) {
   const statuses = [...new Set(STUDENTS.map(s => s.status).filter(Boolean))];
   $('#statusFilter').innerHTML = '<option value="">All statuses</option>' +
     statuses.map(s => `<option>${esc(s)}</option>`).join('');
-  $('#brandTitle').textContent = META.batch || 'QCOU-B02';
-  $('#brandSub').textContent = (META.naqeeb ? META.naqeeb + ' · ' : '') + STUDENTS.length + ' students';
+  $('#brandTitle').textContent = "Halqa Hub";
+  $('#brandSub').textContent = (META.batch || '') + ' · ' + STUDENTS.length + ' students';
 }
 
 async function startApp() {
