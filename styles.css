@@ -12,6 +12,7 @@
   --absent: #d8584f;
   --leave: #e0a93b;
   --drop: #9aa5a0;
+  --holiday: #6b8fb5;
   --radius: 14px;
   --shadow: 0 1px 3px rgba(20,32,27,.08), 0 6px 20px rgba(20,32,27,.05);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
@@ -122,12 +123,22 @@ button { font-family: inherit; cursor: pointer; }
 .att-legend span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 .lg-P::before { background: var(--present); } .lg-A::before { background: var(--absent); }
 .lg-L::before { background: var(--leave); } .lg-D::before { background: var(--drop); }
+.lg-H::before { background: var(--holiday); }
 .att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 6px; }
 .att-cell { border-radius: 8px; padding: 6px 4px; text-align: center; font-size: 10px; color: #fff; cursor: pointer; user-select: none; }
 .att-cell small { display: block; font-size: 9px; opacity: .85; }
 .att-cell.P { background: var(--present); } .att-cell.A { background: var(--absent); }
 .att-cell.L { background: var(--leave); } .att-cell.D { background: var(--drop); }
+.att-cell.H { background: var(--holiday); }
+.att-cell.hol { opacity: .6; }   /* auto-holiday (past blank, not yet saved) */
 .att-cell.empty { background: #eef2f0; color: var(--muted); }
+.extra-group { display: contents; }
+.extra-group.hidden { display: none !important; }
+.fu-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.fu-row:last-child { border-bottom: 0; }
+.fu-row .fu-date { min-width: 92px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.fu-row .fu-date.upcoming { color: var(--green-d); }
+.fu-row select { flex: 1; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; background: var(--card); }
 
 .prog-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; font-size: 13px; }
 .prog-row .pr-label { flex: 1 1 40%; }

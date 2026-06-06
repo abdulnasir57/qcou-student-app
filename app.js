@@ -16,6 +16,20 @@ let BYID = {};           // id -> record
 let view = 'roster';
 let currentId = null;
 
+const TODAY = new Date().toISOString().slice(0, 10);
+const MULAQAT_OPTIONS = ['Alhamdulillah Mulaqat Done', '2nd Mulaqat Done', 'Planning to Meet this Week',
+  'Frequent Regular Mulaqat', 'Not yet Planned', 'Went to Meet but bhai cancelled'];
+const MULAQAT_DONE_SET = ['Alhamdulillah Mulaqat Done', '2nd Mulaqat Done', 'Frequent Regular Mulaqat'];
+const FOLLOWUP_OPTIONS = ['Confirmed', 'Tentative', 'Leave', 'Pending'];
+const mulaqatDone = s => (s.mulaqat || []).filter(m => m.details && (MULAQAT_DONE_SET.includes(m.details) || /done/i.test(m.details))).length;
+// weeks with data or within the next 2 weeks, newest/upcoming first
+function orderedWeeks(weeksList, dataMap) {
+  const h = new Date(); h.setDate(h.getDate() + 14);
+  const cutoff = h.toISOString().slice(0, 10);
+  const marked = new Set(Object.keys(dataMap || {}));
+  return (weeksList || []).filter(w => w <= cutoff || marked.has(w)).sort((a, b) => b.localeCompare(a));
+}
+
 /* ============================ DATA LAYER ============================ */
 const Data = {
   async init() {
@@ -47,7 +61,9 @@ const Data = {
     }
     // demo mode: load the full data file (kept at project root, not deployed) + local edits
     let seed = [];
-    try { seed = (await (await fetch('../students.json')).json()).students; } catch (e) { seed = []; }
+    for (const p of ['students.json', '../students.json']) {
+      try { seed = (await (await fetch(p)).json()).students; if (seed.length) break; } catch (e) { /* try next */ }
+    }
     const edits = JSON.parse(localStorage.getItem('qcou_edits') || '{}');
     return seed.map(s => edits[s.id] ? { ...s, ...edits[s.id] } : s);
   },
@@ -163,6 +179,7 @@ function renderDetail() {
       <div class="dh-stats">
         <div class="dh-stat"><b class="${attClass(p)}">${p == null ? '–' : p + '%'}</b><span>Attendance</span></div>
         <div class="dh-stat"><b>${s.att_present || 0}/${s.att_total || 0}</b><span>Present</span></div>
+        <div class="dh-stat"><b>${mulaqatDone(s)}</b><span>Mulaqats</span></div>
         <div class="dh-stat"><b>${s.nabawi && s.nabawi.cumulative != null ? Math.round(s.nabawi.cumulative * 10) / 10 : '–'}</b><span>Nabawi</span></div>
         <div class="dh-stat"><b>${pct(s.seerat && s.seerat.pct_overall) ?? '–'}${s.seerat && s.seerat.pct_overall != null ? '%' : ''}</b><span>Seerat</span></div>
       </div>
@@ -171,8 +188,8 @@ function renderDetail() {
     ${attendanceSection(s)}
     ${seeratSection(s)}
     ${nabawiSection(s)}
+    ${followupSection(s)}
     ${weeklySection(s, 'audio', 'Audio Listening', ['Yes'])}
-    ${weeklySection(s, 'followup', 'Next-Class Follow-up', ['Confirmed', 'Tentative', 'Leave', 'Pending'])}
     ${mulaqatSection(s)}
     ${namazSection(s)}
   `;
@@ -203,26 +220,48 @@ function profileSection(s) {
     true);
 }
 
-/* ---- Attendance (tap cells to cycle) ---- */
-function visibleWeeks(s, extraMap) {
-  // show weeks up to ~2 weeks ahead of today, plus any week that already has data
-  const horizon = new Date(); horizon.setDate(horizon.getDate() + 14);
-  const cutoff = horizon.toISOString().slice(0, 10);
-  const marked = new Set([...Object.keys(s.attendance || {}), ...Object.keys(extraMap || {})]);
-  return (META.weeks || []).filter(w => w <= cutoff || marked.has(w));
+/* ---- Attendance (tap cells to cycle); newest first; last 5 + expand; past blanks = Holiday ---- */
+function attCell(s, w) {
+  const raw = (s.attendance || {})[w] || '';
+  const past = w < TODAY;
+  const shown = raw || (past ? 'H' : '');          // past blanks shown as Holiday
+  const cls = raw || (past ? 'H hol' : 'empty');   // 'hol' = auto-holiday (not yet saved)
+  return `<div class="att-cell ${cls}" data-week="${esc(w)}" data-mark="${esc(raw)}">${shown || '·'}<small>${fmtDate(w).slice(0, 6)}</small></div>`;
 }
 function attendanceSection(s) {
-  const weeks = visibleWeeks(s);
-  const cells = weeks.map(w => {
-    const m = (s.attendance || {})[w] || '';
-    return `<div class="att-cell ${m || 'empty'}" data-week="${esc(w)}" data-mark="${esc(m)}">${m || '·'}<small>${fmtDate(w).slice(0, 6)}</small></div>`;
-  }).join('');
+  const weeks = orderedWeeks(META.weeks, s.attendance);   // newest / upcoming first
+  const first = weeks.slice(0, 5).map(w => attCell(s, w)).join('');
+  const rest = weeks.slice(5).map(w => attCell(s, w)).join('');
   const legend = `<div class="att-legend">
     <span class="lg-P">Present</span><span class="lg-A">Absent</span>
-    <span class="lg-L">Leave</span><span class="lg-D">Drop</span>
-    <span class="muted">· tap a week to change</span></div>`;
+    <span class="lg-L">Leave</span><span class="lg-H">Holiday</span><span class="lg-D">Drop</span>
+    <span class="muted">· tap to change</span></div>`;
+  const expand = rest
+    ? `<button class="btn btn-ghost expand-btn" data-expand="attExtra" style="margin-top:10px">Show all ${weeks.length} weeks ▾</button>` : '';
   return section('attendance', `🗓️ Attendance · ${pct(s.att_pct) ?? '–'}%`,
-    legend + `<div class="att-grid" id="attGrid">${cells}</div>`, false, true);
+    legend + `<div class="att-grid" id="attGrid">${first}<span class="extra-group hidden" id="attExtra">${rest}</span></div>${expand}`,
+    false, true);
+}
+
+/* ---- Next-Class Follow-up (editable dropdowns; newest/upcoming first; last 6 + expand) ---- */
+function followupSection(s) {
+  const weeks = orderedWeeks(META.followup_weeks || [], s.followup);
+  const row = w => {
+    const v = (s.followup || {})[w] || '';
+    const extra = v && !FOLLOWUP_OPTIONS.includes(v) ? `<option selected>${esc(v)}</option>` : '';
+    const opts = `<option value="" ${v === '' ? 'selected' : ''}>—</option>${extra}` +
+      FOLLOWUP_OPTIONS.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('');
+    const upcoming = w >= TODAY;
+    return `<div class="fu-row"><span class="fu-date${upcoming ? ' upcoming' : ''}">${esc(fmtDate(w))}</span>
+      <select data-fu="${esc(w)}">${opts}</select></div>`;
+  };
+  const first = weeks.slice(0, 6).map(row).join('');
+  const rest = weeks.slice(6).map(row).join('');
+  const expand = rest
+    ? `<button class="btn btn-ghost expand-btn" data-expand="fuExtra" style="margin-top:8px">Show all ${weeks.length} weeks ▾</button>` : '';
+  const body = `<div class="muted" style="font-size:12px;margin-bottom:8px">Upcoming / latest first · set status &amp; Save</div>
+    ${first || '<p class="empty-note">No follow-up weeks.</p>'}<div class="extra-group hidden" id="fuExtra">${rest}</div>${expand}`;
+  return section('followup', '📞 Next-Class Follow-up', body, false, true);
 }
 
 /* ---- Seerat ---- */
@@ -285,11 +324,13 @@ function mulaqatSection(s) {
   const list = items.length ? items.map((m, i) =>
     `<div class="mulaqat-item"><span class="mu-date">${esc(fmtDate(m.date) || '—')}</span><span style="flex:1">${esc(m.details || '')}</span></div>`).join('')
     : `<p class="empty-note">No meetings logged yet.</p>`;
+  const muOpts = MULAQAT_OPTIONS.map(o => `<option>${esc(o)}</option>`).join('');
   const adder = `<div class="edit-mode hidden" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
     <input type="date" id="muDate" style="flex:1;min-width:130px;padding:9px;border:1px solid var(--line);border-radius:8px" />
-    <input type="text" id="muDetails" placeholder="Details" style="flex:2;min-width:160px;padding:9px;border:1px solid var(--line);border-radius:8px" />
+    <select id="muDetails" style="flex:2;min-width:180px;padding:9px;border:1px solid var(--line);border-radius:8px">
+      <option value="">Select details…</option>${muOpts}</select>
     <button class="btn btn-ghost" id="muAdd">+ Add meeting</button></div>`;
-  return section('mulaqat', '🤝 Physical Mulaqat', list + adder, true, false, true);
+  return section('mulaqat', `🤝 Physical Mulaqat · ${mulaqatDone(s)} done / ${items.length} logged`, list + adder, true, false, true);
 }
 
 /* ---- Namaz ---- */
@@ -324,15 +365,29 @@ function wireDetail(s) {
   $$('[data-edit]', root).forEach(b => b.onclick = () => toggleEdit(b.dataset.edit, true));
   $$('[data-cancel]', root).forEach(b => b.onclick = () => renderDetail());
 
-  // attendance cells cycle: empty→P→A→L→D→empty
-  const order = ['', 'P', 'A', 'L', 'D'];
+  // attendance cells cycle: empty→P→A→L→H→D→empty
+  const order = ['', 'P', 'A', 'L', 'H', 'D'];
   $$('#attGrid .att-cell', root).forEach(c => c.onclick = () => {
     const cur = c.dataset.mark || '';
     const next = order[(order.indexOf(cur) + 1) % order.length];
     c.dataset.mark = next;
-    c.className = 'att-cell ' + (next || 'empty');
-    c.firstChild.textContent = next || '·';
+    const past = c.dataset.week < TODAY;
+    c.className = 'att-cell ' + (next || (past ? 'H hol' : 'empty'));
+    c.firstChild.textContent = next || (past ? 'H' : '·');
     showSaveBar('attendance');
+  });
+
+  // follow-up dropdowns → reveal Save when changed
+  $$('[data-fu]', root).forEach(sel => sel.onchange = () => showSaveBar('followup'));
+
+  // expand/collapse "show all weeks" toggles
+  $$('[data-expand]', root).forEach(b => {
+    const collapsedLabel = b.textContent;
+    b.onclick = () => {
+      const grp = $('#' + b.dataset.expand, root);
+      const nowHidden = grp.classList.toggle('hidden');
+      b.textContent = nowHidden ? collapsedLabel : 'Show less';
+    };
   });
 
   // saves
@@ -376,6 +431,12 @@ async function saveSection(key, s) {
     const att = {};
     $$('#attGrid .att-cell', root).forEach(c => { if (c.dataset.mark) att[c.dataset.week] = c.dataset.mark; });
     s.attendance = att; recomputeAttendance(s);
+  } else if (key === 'followup') {
+    s.followup = s.followup || {};
+    $$('[data-fu]', root).forEach(sel => {
+      const w = sel.dataset.fu;
+      if (sel.value) s.followup[w] = sel.value; else delete s.followup[w];
+    });
   } else if (key === 'seerat') {
     $$('[data-seerat]', root).forEach(sel => { s.seerat.topics[sel.dataset.seerat] = sel.value || undefined; });
     recomputeSeerat(s);
