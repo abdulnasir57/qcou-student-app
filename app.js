@@ -138,8 +138,9 @@ function relTime(iso) {
 }
 async function updateSyncInfo() {
   const el = $('#syncInfo'); if (!el || !LIVE) return;
+  el.classList.remove('hidden');
   try { const t = await Data.lastSync(); el.textContent = '🔄 OneDrive last synced: ' + relTime(t); }
-  catch (e) { el.textContent = ''; }
+  catch (e) { el.textContent = '🔄 OneDrive sync active'; }
 }
 
 /* ============================ HELPERS ============================ */
@@ -371,24 +372,31 @@ function progBar(label, p) {
 }
 
 /* ---- Nabawi ---- */
+const catAvg = arr => { const v = (arr || []).filter(x => x != null && x !== ''); return v.length ? v.reduce((a, b) => a + (+b), 0) / v.length : null; };
 function nabawiSection(s) {
   if (!s.nabawi) return '';
   const crit = (META.nabawi_criteria && META.nabawi_criteria.length)
     ? META.nabawi_criteria
     : (META.nabawi_sections || []).map(n => ({ category: (n || '').replace(/^Score \d+: /, ''), questions: [] }));
+  const q = s.nabawi.q || [];
   const cards = crit.map((c, i) => {
-    const v = s.nabawi.scores[i];
-    const qs = (c.questions || []).map(q => `<li>${esc(q)}</li>`).join('');
+    const qvals = q[i] || [];
+    const avg = catAvg(qvals.length ? qvals : [s.nabawi.scores ? s.nabawi.scores[i] : null]);
+    const rows = (c.questions || []).map((qq, j) => {
+      const val = qvals[j];
+      return `<div class="nq-row">
+        <span class="nq-text">${esc(qq)}</span>
+        <span class="nq-score view-mode">${val == null || val === '' ? '–' : val}</span>
+        <input class="nq-input edit-mode hidden" data-nq="${i}_${j}" type="number" min="0" max="10" step="1" value="${val ?? ''}" />
+      </div>`;
+    }).join('');
     return `<div class="nabawi-cat">
       <div class="nabawi-cat-head">
         <div class="nabawi-cat-title"><span class="nabawi-num">${i + 1}</span>${esc(c.category)}</div>
-        <div class="nabawi-cat-score">
-          <b class="view-mode">${v == null ? '–' : Math.round(v * 10) / 10}</b>
-          <input class="edit-mode hidden" data-nabawi="${i}" type="number" step="0.1" min="0" max="10" value="${v ?? ''}" />
-        </div>
+        <div class="nabawi-cat-score"><b>${avg == null ? '–' : Math.round(avg * 10) / 10}</b></div>
       </div>
-      ${qs ? `<button class="btn btn-ghost expand-btn nabawi-qbtn" data-expand="nabq${i}">View ${c.questions.length} questions ▾</button>
-      <ul id="nabq${i}" class="nabawi-q hidden">${qs}</ul>` : ''}
+      ${rows ? `<button class="btn btn-ghost expand-btn nabawi-qbtn" data-expand="nabq${i}">${c.questions.length} questions · score each ▾</button>
+      <div id="nabq${i}" class="nabawi-q-wrap hidden">${rows}</div>` : ''}
     </div>`;
   }).join('');
   const head = `<div class="dh-stats" style="margin:0 0 14px">
@@ -508,6 +516,8 @@ function toggleEdit(key, on) {
   $$('.view-mode', sec).forEach(e => e.classList.toggle('hidden', on));
   $$('.edit-mode', sec).forEach(e => e.classList.toggle('hidden', !on));
   const act = $('.sec-act', sec); if (act) act.classList.toggle('hidden', on);
+  // Nabawi: reveal all question rows when editing so each can be scored
+  if (key === 'nabawi' && on) $$('.nabawi-q-wrap', sec).forEach(e => e.classList.remove('hidden'));
   showSaveBar(key, on);
 }
 function showSaveBar(key, on = true) {
@@ -535,9 +545,16 @@ async function saveSection(key, s) {
     $$('[data-seerat]', root).forEach(sel => { s.seerat.topics[sel.dataset.seerat] = sel.value || undefined; });
     recomputeSeerat(s);
   } else if (key === 'nabawi') {
-    $$('[data-nabawi]', root).forEach(inp => { const i = +inp.dataset.nabawi; s.nabawi.scores[i] = inp.value === '' ? null : Number(inp.value); });
+    const crit = META.nabawi_criteria || [];
+    const q = crit.map((c, i) => (c.questions || []).map((_, j) => {
+      const inp = $(`[data-nq="${i}_${j}"]`, root);
+      return inp && inp.value !== '' ? Number(inp.value) : null;
+    }));
+    s.nabawi.q = q;
+    s.nabawi.scores = q.map(arr => catAvg(arr));
     const valid = s.nabawi.scores.filter(v => v != null);
     s.nabawi.cumulative = valid.length ? valid.reduce((a, b) => a + b, 0) : null;
+    s.nabawi.percentile = s.nabawi.cumulative != null ? s.nabawi.cumulative / (crit.length * 10) : null;
   }
   await persist(s, 'Saved');
 }
