@@ -12,7 +12,7 @@
   <link rel="icon" href="icon.svg" />
   <link rel="manifest" href="manifest.json" />
   <title>Abdul Nasir's Halqa Hub</title>
-  <link rel="stylesheet" href="styles.css?v=20260607b" />
+  <link rel="stylesheet" href="styles.css?v=20260607c" />
 </head>
 <body>
   <!-- Login gate (shown only in live mode when signed out) -->
@@ -59,11 +59,13 @@
           <option value="">All statuses</option>
         </select>
         <select id="sortBy">
+          <option value="id">Sort: ID#</option>
           <option value="name">Sort: Name</option>
           <option value="att">Sort: Attendance %</option>
           <option value="nabawi">Sort: Nabawi score</option>
         </select>
       </div>
+      <div id="syncInfo" class="sync-info"></div>
       <div id="rosterCount" class="roster-count"></div>
       <div id="roster" class="roster"></div>
     </section>
@@ -81,6 +83,6 @@
   <script src="config.js" onerror="window.__noConfig=true"></script>
   <!-- Supabase client (only used in live mode) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20260607b"></script>
+  <script src="app.js?v=20260607c"></script>
 </body>
 </html>

@@ -22,12 +22,14 @@ const MULAQAT_OPTIONS = ['Alhamdulillah Mulaqat Done', '2nd Mulaqat Done', 'Plan
 const MULAQAT_DONE_SET = ['Alhamdulillah Mulaqat Done', '2nd Mulaqat Done', 'Frequent Regular Mulaqat'];
 const FOLLOWUP_OPTIONS = ['Confirmed', 'Tentative', 'Leave', 'Pending'];
 const mulaqatDone = s => (s.mulaqat || []).filter(m => m.details && (MULAQAT_DONE_SET.includes(m.details) || /done/i.test(m.details))).length;
-// weeks with data or within the next 2 weeks, newest/upcoming first
-function orderedWeeks(weeksList, dataMap) {
-  const h = new Date(); h.setDate(h.getDate() + 14);
+// next upcoming class first (ascending), then recent past (descending); cap far-future clutter
+function orderedWeeks(weeksList) {
+  const all = weeksList || [];
+  const h = new Date(); h.setDate(h.getDate() + 120);
   const cutoff = h.toISOString().slice(0, 10);
-  const marked = new Set(Object.keys(dataMap || {}));
-  return (weeksList || []).filter(w => w <= cutoff || marked.has(w)).sort((a, b) => b.localeCompare(a));
+  const future = all.filter(w => w >= TODAY && w <= cutoff).sort((a, b) => a.localeCompare(b));
+  const past = all.filter(w => w < TODAY).sort((a, b) => b.localeCompare(a));
+  return [...future, ...past];
 }
 
 /* ============================ DATA LAYER ============================ */
@@ -84,6 +86,12 @@ const Data = {
     if (!LIVE) return { data: { skipped: 'demo' } };
     return await sb.functions.invoke('sync');
   },
+
+  async lastSync() {
+    if (!LIVE) return null;
+    const { data } = await sb.from('app_config').select('value').eq('key', 'last_synced_at').maybeSingle();
+    return data ? data.value : null;
+  },
 };
 
 /* ---- OneDrive instant sync (calls the Supabase edge function) ---- */
@@ -105,6 +113,7 @@ async function runOneDriveSync() {
     if (error) throw error;
     if (data && data.skipped === 'busy') _dirty = true;   // a sync was already running server-side
     setSyncBtn('synced');
+    setTimeout(updateSyncInfo, 1000);
   } catch (e) {
     setSyncBtn('error'); toast('OneDrive sync failed — will retry');
     _dirty = true;
@@ -117,6 +126,20 @@ function scheduleSync() {          // debounce bursts of edits into one sync
   if (!LIVE) return;
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(runOneDriveSync, 2500);
+}
+function relTime(iso) {
+  if (!iso) return 'never';
+  const d = new Date(iso); if (isNaN(d)) return iso;
+  const sec = Math.round((Date.now() - d.getTime()) / 1000);
+  if (sec < 60) return 'just now';
+  if (sec < 3600) return Math.floor(sec / 60) + ' min ago';
+  if (sec < 86400) return Math.floor(sec / 3600) + ' hr ago';
+  return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+async function updateSyncInfo() {
+  const el = $('#syncInfo'); if (!el || !LIVE) return;
+  try { const t = await Data.lastSync(); el.textContent = '🔄 OneDrive last synced: ' + relTime(t); }
+  catch (e) { el.textContent = ''; }
 }
 
 /* ============================ HELPERS ============================ */
@@ -159,9 +182,10 @@ function renderRoster() {
       .some(v => v && String(v).toLowerCase().includes(q));
   });
   list.sort((a, b) => {
+    if (sort === 'name') return (a.name || '').localeCompare(b.name || '');
     if (sort === 'att') return (b.att_pct || 0) - (a.att_pct || 0);
     if (sort === 'nabawi') return ((b.nabawi && b.nabawi.cumulative) || 0) - ((a.nabawi && a.nabawi.cumulative) || 0);
-    return (a.name || '').localeCompare(b.name || '');
+    return (a.id || '').localeCompare(b.id || '');   // default: ID# (Excel order)
   });
   $('#rosterCount').textContent = `${list.length} of ${STUDENTS.length} students`;
   $('#roster').innerHTML = list.map(s => {
@@ -244,18 +268,40 @@ const PROFILE_FIELDS = [
   ['called_by', 'Called By'], ['naqeeb', 'Naqeeb'], ['wa_group', 'WhatsApp Group'], ['remarks', 'Remarks'],
 ];
 function profileSection(s) {
-  const view = PROFILE_FIELDS.map(([k, l]) => {
-    let link = null;
-    if (k === 'mobile' || k === 'whatsapp' || k === 'ref_mobile') link = s[k] ? 'tel:' + s[k] : null;
-    if (k === 'email') link = s[k] ? 'mailto:' + s[k] : null;
-    return field(l, s[k], { link });
-  }).join('');
+  const tel = v => (v ? 'tel:' + v : null);
+  const hometown = [s.ht_city || s.ht_area, s.ht_state, s.ht_country].filter(Boolean).join(', ');
+  const residence = [s.cr_city || s.cr_area, s.cr_province, s.cr_country].filter(Boolean).join(', ');
+  const primary = [
+    field('Mobile', s.mobile, { link: tel(s.mobile) }),
+    field('Age', s.age),
+    field('Profession', s.profession),
+    field('Hometown', hometown),
+    field('Residence', residence),
+    field('Reference Name', s.ref_name),
+    field('Reference Mobile', s.ref_mobile, { link: tel(s.ref_mobile) }),
+  ].join('');
+  const more = [
+    field('WhatsApp', s.whatsapp, { link: tel(s.whatsapp) }),
+    field('Email', s.email, { link: s.email ? 'mailto:' + s.email : null }),
+    field('Date of Birth', s.dob), field('Qualification', s.qualification),
+    field('Hometown Area', s.ht_area), field('District', s.ht_district),
+    field('State', s.ht_state), field('Country', s.ht_country),
+    field('Residence Area', s.cr_area), field('Province', s.cr_province), field('Residence Country', s.cr_country),
+    field('Reference ID', s.ref_id), field('Reference Batch', s.ref_batch),
+    field('Called By', s.called_by), field('Naqeeb', s.naqeeb),
+    field('WhatsApp Group', s.wa_group), field('Remarks', s.remarks),
+  ].join('');
   const statusOpts = ['Active', 'Drop-Out'].map(o => `<option ${s.status === o ? 'selected' : ''}>${o}</option>`).join('');
   const edit = `<div class="field"><label>Status</label><select data-pf="status">${statusOpts}</select></div>` +
     PROFILE_FIELDS.map(([k, l]) => `<div class="field"><label>${esc(l)}</label><input data-pf="${k}" value="${esc(s[k] ?? '')}" /></div>`).join('');
-  return section('profile', '👤 Profile & Contact',
-    `<div class="field-grid view-mode">${view}</div><div class="field-grid edit-mode hidden">${edit}</div>`,
-    true);
+  const body = `
+    <div class="view-mode">
+      <div class="field-grid">${primary}</div>
+      <button class="btn btn-ghost expand-btn" data-expand="profMore" style="margin-top:12px">More details ▾</button>
+      <div id="profMore" class="hidden" style="margin-top:12px"><div class="field-grid">${more}</div></div>
+    </div>
+    <div class="field-grid edit-mode hidden">${edit}</div>`;
+  return section('profile', '👤 Profile & Contact', body, true);
 }
 
 /* ---- Attendance (tap cells to cycle); newest first; last 5 + expand; past blanks = Holiday ---- */
@@ -327,19 +373,29 @@ function progBar(label, p) {
 /* ---- Nabawi ---- */
 function nabawiSection(s) {
   if (!s.nabawi) return '';
-  const secs = META.nabawi_sections || [];
-  const cells = secs.map((name, i) => {
+  const crit = (META.nabawi_criteria && META.nabawi_criteria.length)
+    ? META.nabawi_criteria
+    : (META.nabawi_sections || []).map(n => ({ category: (n || '').replace(/^Score \d+: /, ''), questions: [] }));
+  const cards = crit.map((c, i) => {
     const v = s.nabawi.scores[i];
-    return `<div class="score-cell">
-      <b class="view-mode">${v == null ? '–' : Math.round(v * 10) / 10}</b>
-      <input class="edit-mode hidden" data-nabawi="${i}" type="number" step="0.1" min="0" max="10" value="${v ?? ''}" style="text-align:center;font-size:18px;font-weight:700" />
-      <span>${esc((name || ('Score ' + (i + 1))).replace(/^Score \d+: /, '').slice(0, 38))}</span></div>`;
+    const qs = (c.questions || []).map(q => `<li>${esc(q)}</li>`).join('');
+    return `<div class="nabawi-cat">
+      <div class="nabawi-cat-head">
+        <div class="nabawi-cat-title"><span class="nabawi-num">${i + 1}</span>${esc(c.category)}</div>
+        <div class="nabawi-cat-score">
+          <b class="view-mode">${v == null ? '–' : Math.round(v * 10) / 10}</b>
+          <input class="edit-mode hidden" data-nabawi="${i}" type="number" step="0.1" min="0" max="10" value="${v ?? ''}" />
+        </div>
+      </div>
+      ${qs ? `<button class="btn btn-ghost expand-btn nabawi-qbtn" data-expand="nabq${i}">View ${c.questions.length} questions ▾</button>
+      <ul id="nabq${i}" class="nabawi-q hidden">${qs}</ul>` : ''}
+    </div>`;
   }).join('');
-  const head = `<div class="dh-stats" style="margin:0 0 12px">
+  const head = `<div class="dh-stats" style="margin:0 0 14px">
     <div class="dh-stat"><b>${s.nabawi.cumulative != null ? Math.round(s.nabawi.cumulative * 10) / 10 : '–'}</b><span>Cumulative</span></div>
     <div class="dh-stat"><b>${pct(s.nabawi.percentile) ?? '–'}%</b><span>Percentile</span></div>
     <div class="dh-stat" style="flex:2"><b style="font-size:13px">${esc(s.nabawi.rating || '–')}</b><span>Rating</span></div></div>`;
-  return section('nabawi', '۞ Nabawi Self-Assessment', head + `<div class="score-grid">${cells}</div>`, true);
+  return section('nabawi', '۞ Nabawi Self-Assessment', head + cards, true);
 }
 
 /* ---- Weekly trackers (audio / followup) ---- */
@@ -505,7 +561,8 @@ function renderDashboard() {
   const drop = STUDENTS.filter(s => s.status === 'Drop-Out');
   const withAtt = STUDENTS.filter(s => s.att_pct != null);
   const avg = withAtt.length ? Math.round(withAtt.reduce((a, s) => a + s.att_pct, 0) / withAtt.length * 100) : 0;
-  const low = [...withAtt].filter(s => s.att_pct < 0.5).sort((a, b) => a.att_pct - b.att_pct);
+  // needs attention: ACTIVE students only, 10 lowest attendance
+  const low = active.filter(s => s.att_pct != null).sort((a, b) => a.att_pct - b.att_pct).slice(0, 10);
   const namazDone = STUDENTS.filter(s => s.namaz && s.namaz.translation === 'Yes').length;
   const lead = [...withAtt].sort((a, b) => b.att_pct - a.att_pct);
 
@@ -529,8 +586,8 @@ function renderDashboard() {
       ${stat(low.length, 'Below 50% Attendance')}
     </div>
     <div class="dash-section">
-      <h3>⚠️ Needs Attention · lowest attendance</h3>
-      ${low.length ? low.slice(0, 10).map(leadRow).join('') : '<p class="empty-note">Everyone above 50% 🎉</p>'}
+      <h3>⚠️ Needs Attention · 10 lowest attendance (active)</h3>
+      ${low.length ? low.map(leadRow).join('') : '<p class="empty-note">No active students yet.</p>'}
     </div>
     <div class="dash-section">
       <h3>🏆 Attendance Leaderboard</h3>
@@ -586,6 +643,7 @@ async function startApp() {
   const students = await Data.loadStudents();
   populateData(students);
   goTab('roster');
+  updateSyncInfo();
 }
 
 async function boot() {

@@ -372,5 +372,56 @@
   "2028-07-04",
   "2028-07-11",
   "2028-07-18"
+ ],
+ "nabawi_criteria": [
+  {
+   "category": "Pakizgi ke baghair qurb-e-ilahi nahin (Al-Muddathir: 4-5)",
+   "questions": [
+    "Kya khayalat aur niyat mein pakizgi rakhi ja rahi hai?",
+    "Kya roz marrah akhlaq aur ravaiyon mein safai aur sachai hai?",
+    "Kya jism aur libas pakizah rehte hain?",
+    "Kya ghar aur mahol (mehfil /doston ka halqa) gandagi aur burai se mehfooz hain?"
+   ]
+  },
+  {
+   "category": "Dunya walon se umeed khatam, sirf Allah se lena (Al-Muddathir: 6)",
+   "questions": [
+    "Kya doosron se tawaqqa'at kam aur Allah se umeed ziyada hai?",
+    "Kya doosron par ehsan karke badle ki khwahish nahin rakhi jati?",
+    "Kya dene ka jazbah ghalib hai ya hamesha lene ka socha jata hai?"
+   ]
+  },
+  {
+   "category": "Sabr-o-istaqamat qurb ka hissa hai  (Al-Muddathir: 7)",
+   "questions": [
+    "Kya ibadaat aur deen ke kaam mein mushkilat par sabr kiya jata hai?",
+    "Kya aazmaish aane par istaqamat dikhai jati hai ya peechhe hatne ka rujhan hai?",
+    "Kya mushkil waqt mein bhi ta'alluq Allah ke sath mazboot rehta hai?"
+   ]
+  },
+  {
+   "category": "Raat ki tanhaiyon mein Allah se judna aur Quran se dil jorna (Al-Muzzammil: 2-4)",
+   "questions": [
+    "Kya raat mein (kabhi kabhar hi sahi) Tahajjud ya nafl ke zariye Rab se judne ki koshish ki jati hai?",
+    "Kya Quran ko thehar thehar kar samajhne ki adat dali ja rahi hai?",
+    "Kya raat ke waqt dil naram ho kar Rab ke qareeb mehsoos hota hai?"
+   ]
+  },
+  {
+   "category": "Allah ka zikr mein rehna aur har woh cheez se katna jo Allah se door kare (Al-Muzzammil: 8)",
+   "questions": [
+    "Kya roz marrah zindagi mein zuban aur dil se Allah ka zikr rehta hai?",
+    "Kya woh mehfilen /dost chhor diye gaye hain jo Allah se ghafil karte hain?",
+    "Kya aise halqe apnaye gaye hain jahan Allah ki yaad barhti hai?"
+   ]
+  },
+  {
+   "category": "Mashriq-o-maghrib ke Rab ko pehchan'na aur us par tawakkal karna (Al-Muzzammil: 9)",
+   "questions": [
+    "Kya Rab ko kainat ka Malik samajh kar dil mutma'in hai?",
+    "Kya dil ka sahara sirf Allah hai ya ziyada tar asbab aur logon par bharosa hai?",
+    "Kya faisle aur mushkilat mein Allah par tawakkal ka rawaiyya maujood hai?"
+   ]
+  }
  ]
 }
