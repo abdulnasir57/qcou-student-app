@@ -79,7 +79,45 @@ const Data = {
       localStorage.setItem('qcou_edits', JSON.stringify(edits));
     }
   },
+
+  async triggerSync() {
+    if (!LIVE) return { data: { skipped: 'demo' } };
+    return await sb.functions.invoke('sync');
+  },
 };
+
+/* ---- OneDrive instant sync (calls the Supabase edge function) ---- */
+let _syncing = false, _dirty = false, _syncTimer = null;
+function setSyncBtn(state) {
+  const b = $('#syncBtn'); if (!b) return;
+  b.classList.remove('syncing', 'synced', 'error');
+  if (state === 'syncing') { b.classList.add('syncing'); b.textContent = '⏳ Syncing…'; b.disabled = true; }
+  else if (state === 'synced') { b.classList.add('synced'); b.textContent = '✓ Synced'; b.disabled = false; setTimeout(() => setSyncBtn('idle'), 4000); }
+  else if (state === 'error') { b.classList.add('error'); b.textContent = '⚠ Retry sync'; b.disabled = false; }
+  else { b.textContent = '⟳ Sync'; b.disabled = false; }
+}
+async function runOneDriveSync() {
+  if (!LIVE) return;
+  if (_syncing) { _dirty = true; return; }
+  _syncing = true; setSyncBtn('syncing');
+  try {
+    const { data, error } = await Data.triggerSync();
+    if (error) throw error;
+    if (data && data.skipped === 'busy') _dirty = true;   // a sync was already running server-side
+    setSyncBtn('synced');
+  } catch (e) {
+    setSyncBtn('error'); toast('OneDrive sync failed — will retry');
+    _dirty = true;
+  } finally {
+    _syncing = false;
+    if (_dirty) { _dirty = false; setTimeout(runOneDriveSync, 2000); }
+  }
+}
+function scheduleSync() {          // debounce bursts of edits into one sync
+  if (!LIVE) return;
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(runOneDriveSync, 2500);
+}
 
 /* ============================ HELPERS ============================ */
 const initials = n => (n || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -455,6 +493,7 @@ async function persist(s, msg) {
     toast(msg || 'Saved ✓');
     renderDetail();
     renderRoster();
+    scheduleSync();   // push to OneDrive within seconds
   } catch (e) {
     toast('Save failed: ' + (e.message || e));
   }
@@ -522,6 +561,7 @@ function wireShell() {
   $('#statusFilter').onchange = renderRoster;
   $('#sortBy').onchange = renderRoster;
   $('#signOutBtn').onclick = async () => { await Data.signOut(); location.reload(); };
+  const sBtn = $('#syncBtn'); if (sBtn) sBtn.onclick = () => runOneDriveSync();
 }
 
 function populateData(students) {
@@ -541,6 +581,7 @@ async function startApp() {
   $('#modeBadge').textContent = LIVE ? 'live' : 'demo';
   $('#modeBadge').classList.toggle('live', LIVE);
   $('#signOutBtn').classList.toggle('hidden', !LIVE);
+  $('#syncBtn').classList.toggle('hidden', !LIVE);
   wireShell();
   const students = await Data.loadStudents();
   populateData(students);

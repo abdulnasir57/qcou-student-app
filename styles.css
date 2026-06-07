@@ -48,6 +48,11 @@ button { font-family: inherit; cursor: pointer; }
   padding: 3px 8px; border-radius: 20px; font-weight: 600; }
 .badge-mode.live { background: var(--gold); }
 .icon-btn { background: rgba(255,255,255,.15); color: #fff; border: 0; width: 34px; height: 34px; border-radius: 9px; font-size: 16px; }
+.sync-btn { background: rgba(255,255,255,.18); color: #fff; border: 0; padding: 6px 11px; border-radius: 9px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sync-btn.syncing { background: var(--gold); }
+.sync-btn.synced { background: var(--present); }
+.sync-btn.error { background: var(--absent); }
+.sync-btn:disabled { opacity: .85; }
 .back-btn { display: none; background: rgba(255,255,255,.15); color: #fff; border: 0; width: 34px; height: 34px;
   border-radius: 9px; font-size: 22px; line-height: 1; }
 .back-btn.show { display: block; }
