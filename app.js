@@ -195,7 +195,7 @@ function renderRoster() {
     return `<div class="scard" data-id="${esc(s.id)}">
       <div class="avatar">${esc(initials(s.name))}</div>
       <div class="sc-main">
-        <div class="sc-name">${esc(s.name)}</div>
+        <div class="sc-name${drop ? ' drop' : ''}">${esc(s.name)}</div>
         <div class="sc-sub">${esc(s.cr_city || s.ht_city || '')}${s.profession ? ' · ' + esc(s.profession) : ''}</div>
         <span class="pill ${drop ? 'drop' : 'active'}">${esc(s.status || '—')}</span>
       </div>
@@ -240,11 +240,11 @@ function renderDetail() {
         </div>
       </div>
       <div class="dh-stats">
-        <div class="dh-stat"><b class="${attClass(p)}">${p == null ? '–' : p + '%'}</b><span>Attendance</span></div>
-        <div class="dh-stat"><b>${s.att_present || 0}/${s.att_total || 0}</b><span>Present</span></div>
-        <div class="dh-stat"><b>${mulaqatDone(s)}</b><span>Mulaqats</span></div>
-        <div class="dh-stat"><b>${s.nabawi && s.nabawi.cumulative != null ? Math.round(s.nabawi.cumulative * 10) / 10 : '–'}</b><span>Nabawi</span></div>
-        <div class="dh-stat"><b>${pct(s.seerat && s.seerat.pct_overall) ?? '–'}${s.seerat && s.seerat.pct_overall != null ? '%' : ''}</b><span>Seerat</span></div>
+        <div class="dh-stat clickable" data-goto="attendance"><b class="${attClass(p)}">${p == null ? '–' : p + '%'}</b><span>Attendance</span></div>
+        <div class="dh-stat clickable" data-goto="attendance"><b>${s.att_present || 0}/${s.att_total || 0}</b><span>Present</span></div>
+        <div class="dh-stat clickable" data-goto="mulaqat"><b>${mulaqatDone(s)}</b><span>Mulaqats</span></div>
+        <div class="dh-stat clickable" data-goto="nabawi"><b>${s.nabawi && s.nabawi.cumulative != null ? Math.round(s.nabawi.cumulative * 10) / 10 : '–'}</b><span>Nabawi</span></div>
+        <div class="dh-stat clickable" data-goto="seerat"><b>${pct(s.seerat && s.seerat.pct_overall) ?? '–'}${s.seerat && s.seerat.pct_overall != null ? '%' : ''}</b><span>Seerat</span></div>
       </div>
     </div>
     ${profileSection(s)}
@@ -353,7 +353,7 @@ function followupSection(s) {
 function seeratSection(s) {
   if (!s.seerat) return '';
   const topics = META.seerat_topics || [];
-  const rows = topics.map(t => {
+  const row = t => {
     const st = s.seerat.topics[t] || '';
     const tag = st === 'Completed' ? '<span class="tag completed">Completed</span>'
       : st === 'In-Progress' ? '<span class="tag progress">In-Progress</span>' : '<span class="muted" style="font-size:11px">—</span>';
@@ -361,10 +361,17 @@ function seeratSection(s) {
       <option ${st === 'In-Progress' ? 'selected' : ''}>In-Progress</option>
       <option ${st === 'Completed' ? 'selected' : ''}>Completed</option></select>`;
     return `<div class="prog-row"><span class="pr-label">${esc(t)}</span><span class="view-mode">${tag}</span><span class="edit-mode hidden" style="flex:1">${sel}</span></div>`;
-  }).join('');
+  };
+  let lastActive = -1;
+  topics.forEach((t, i) => { if (s.seerat.topics[t]) lastActive = i; });
+  const shown = topics.slice(0, lastActive + 1).map(row).join('');
+  const rest = topics.slice(lastActive + 1).map(row).join('');
   const bars = `<div style="margin-bottom:12px">
     ${progBar('Makki', pct(s.seerat.pct_makki))}${progBar('Madani', pct(s.seerat.pct_madani))}${progBar('Overall', pct(s.seerat.pct_overall))}</div>`;
-  return section('seerat', '📖 Seerat Progress', bars + rows, true);
+  const expand = rest
+    ? `<button class="btn btn-ghost expand-btn" data-expand="seeratMore" style="margin-top:8px">View all ${topics.length} topics ▾</button>` : '';
+  const body = bars + (shown || '') + `<div id="seeratMore" class="hidden">${rest}</div>` + expand;
+  return section('seerat', '📖 Seerat Progress', body, true);
 }
 function progBar(label, p) {
   p = p ?? 0;
@@ -422,9 +429,16 @@ function weeklySection(s, key, title, marks) {
 
 /* ---- Mulaqat ---- */
 function mulaqatSection(s) {
-  const items = (s.mulaqat || []).filter(m => m.date || m.details);
-  const list = items.length ? items.map((m, i) =>
-    `<div class="mulaqat-item"><span class="mu-date">${esc(fmtDate(m.date) || '—')}</span><span style="flex:1">${esc(m.details || '')}</span></div>`).join('')
+  const items = (s.mulaqat || []).map((m, i) => ({ m, i })).filter(x => x.m.date || x.m.details);
+  const list = items.length ? items.map(({ m, i }) =>
+    `<div class="mulaqat-item">
+       <span class="mu-date">${esc(fmtDate(m.date) || '—')}</span>
+       <div style="flex:1">
+         <div>${esc(m.details || '')}</div>
+         ${m.note ? `<div class="mu-note view-mode">📝 ${esc(m.note)}</div>` : '<span class="view-mode"></span>'}
+         <input class="mu-note-input edit-mode hidden" data-munote="${i}" placeholder="Private note (app only)" value="${esc(m.note || '')}" />
+       </div>
+     </div>`).join('')
     : `<p class="empty-note">No meetings logged yet.</p>`;
   const muOpts = MULAQAT_OPTIONS.map(o => `<option>${esc(o)}</option>`).join('');
   const adder = `<div class="edit-mode hidden" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
@@ -466,6 +480,12 @@ function wireDetail(s) {
   // edit toggles (profile, seerat, nabawi, mulaqat)
   $$('[data-edit]', root).forEach(b => b.onclick = () => toggleEdit(b.dataset.edit, true));
   $$('[data-cancel]', root).forEach(b => b.onclick = () => renderDetail());
+
+  // clickable summary stats → jump to that section
+  $$('[data-goto]', root).forEach(b => b.onclick = () => {
+    const sec = $(`[data-section="${b.dataset.goto}"]`, root);
+    if (sec) { const y = sec.getBoundingClientRect().top + window.scrollY - 56; window.scrollTo(0, y); }
+  });
 
   // attendance cells cycle: empty→P→A→L→H→D→empty
   const order = ['', 'P', 'A', 'L', 'H', 'D'];
@@ -518,6 +538,8 @@ function toggleEdit(key, on) {
   const act = $('.sec-act', sec); if (act) act.classList.toggle('hidden', on);
   // Nabawi: reveal all question rows when editing so each can be scored
   if (key === 'nabawi' && on) $$('.nabawi-q-wrap', sec).forEach(e => e.classList.remove('hidden'));
+  // Seerat: reveal all topics when editing
+  if (key === 'seerat' && on) { const m = $('#seeratMore', sec); if (m) m.classList.remove('hidden'); }
   showSaveBar(key, on);
 }
 function showSaveBar(key, on = true) {
@@ -535,6 +557,11 @@ async function saveSection(key, s) {
     const att = {};
     $$('#attGrid .att-cell', root).forEach(c => { if (c.dataset.mark) att[c.dataset.week] = c.dataset.mark; });
     s.attendance = att; recomputeAttendance(s);
+  } else if (key === 'mulaqat') {
+    $$('[data-munote]', root).forEach(inp => {
+      const i = +inp.dataset.munote;
+      if (s.mulaqat && s.mulaqat[i]) s.mulaqat[i].note = inp.value.trim() || null;
+    });
   } else if (key === 'followup') {
     s.followup = s.followup || {};
     $$('[data-fu]', root).forEach(sel => {
@@ -613,11 +640,77 @@ function renderDashboard() {
   $$('#dashboardView .lead-row').forEach(r => r.onclick = () => openDetail(r.dataset.id));
 }
 
+/* ============================ BULK NEXT-CLASS FOLLOW-UP ============================ */
+let bulkWeek = null;
+function upcomingFollowupWeeks() {
+  return (META.followup_weeks || []).filter(w => w >= TODAY).sort((a, b) => a.localeCompare(b)).slice(0, 12);
+}
+function openBulkFollowup() {
+  view = 'bulk';
+  const ups = upcomingFollowupWeeks();
+  bulkWeek = (bulkWeek && ups.includes(bulkWeek)) ? bulkWeek : (ups[0] || null);
+  $('#app').classList.add('detail-open');
+  $('#backBtn').classList.add('show');
+  showView('bulk');
+  renderBulk();
+  window.scrollTo(0, 0);
+}
+function renderBulk() {
+  const ups = upcomingFollowupWeeks();
+  if (!bulkWeek) bulkWeek = ups[0];
+  if (!bulkWeek) { $('#bulkView').innerHTML = '<p class="empty-note">No upcoming class dates.</p>'; return; }
+  const weekOpts = ups.map(w => `<option value="${w}" ${w === bulkWeek ? 'selected' : ''}>${fmtDate(w)}</option>`).join('');
+  const actives = STUDENTS.filter(s => s.status !== 'Drop-Out').sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+  const rows = actives.map(s => {
+    const v = (s.followup || {})[bulkWeek] || '';
+    const extra = v && !FOLLOWUP_OPTIONS.includes(v) ? `<option selected>${esc(v)}</option>` : '';
+    const sel = `<select data-bfu="${esc(s.id)}"><option value="" ${v === '' ? 'selected' : ''}>—</option>${extra}` +
+      FOLLOWUP_OPTIONS.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('') + `</select>`;
+    return `<div class="bulk-row"><span class="bulk-name">${esc(s.name)}</span>${sel}</div>`;
+  }).join('');
+  $('#bulkView').innerHTML = `
+    <div class="bulk-head">
+      <h2>📞 Next-Class Follow-up</h2>
+      <label class="muted" style="font-size:12px;display:block;margin-bottom:4px">Class date</label>
+      <select id="bulkWeekSel">${weekOpts}</select>
+      <div class="muted" style="font-size:12px;margin-top:8px">Set each student's status, then Save all — it syncs to OneDrive.</div>
+    </div>
+    <div class="bulk-list">${rows}</div>
+    <div class="save-bar" style="position:sticky;bottom:0;z-index:5">
+      <button class="btn btn-primary" id="bulkSave">Save all</button>
+      <button class="btn btn-ghost" id="bulkQuick">Set all Confirmed</button>
+    </div>`;
+  $('#bulkWeekSel').onchange = e => { bulkWeek = e.target.value; renderBulk(); };
+  $('#bulkSave').onclick = saveBulk;
+  $('#bulkQuick').onclick = () => $$('#bulkView [data-bfu]').forEach(s => s.value = 'Confirmed');
+}
+async function saveBulk() {
+  const changed = [];
+  $$('#bulkView [data-bfu]').forEach(sel => {
+    const s = BYID[sel.dataset.bfu]; if (!s) return;
+    const cur = (s.followup || {})[bulkWeek] || '';
+    if (sel.value !== cur) {
+      s.followup = s.followup || {};
+      if (sel.value) s.followup[bulkWeek] = sel.value; else delete s.followup[bulkWeek];
+      changed.push(s);
+    }
+  });
+  if (!changed.length) { toast('No changes to save'); return; }
+  toast('Saving ' + changed.length + '…');
+  try {
+    for (const s of changed) { await Data.save(s); BYID[s.id] = s; }
+    toast(changed.length + ' student(s) updated ✓');
+    scheduleSync();
+    renderRoster();
+  } catch (e) { toast('Save failed: ' + (e.message || e)); }
+}
+
 /* ============================ NAV / BOOT ============================ */
 function showView(v) {
   $('#rosterView').classList.toggle('hidden', v !== 'roster');
   $('#dashboardView').classList.toggle('hidden', v !== 'dashboard');
   $('#detailView').classList.toggle('hidden', v !== 'detail');
+  $('#bulkView').classList.toggle('hidden', v !== 'bulk');
 }
 function goTab(v) {
   view = v; currentId = null;
@@ -636,6 +729,7 @@ function wireShell() {
   $('#sortBy').onchange = renderRoster;
   $('#signOutBtn').onclick = async () => { await Data.signOut(); location.reload(); };
   const sBtn = $('#syncBtn'); if (sBtn) sBtn.onclick = () => runOneDriveSync();
+  const bf = $('#bulkFuBtn'); if (bf) bf.onclick = () => openBulkFollowup();
 }
 
 function populateData(students) {
