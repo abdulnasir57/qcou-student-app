@@ -121,6 +121,13 @@ button { font-family: inherit; cursor: pointer; }
 .bulk-head { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 12px; }
 .bulk-head h2 { margin: 0 0 10px; font-size: 18px; }
 .bulk-head select { padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; font-size: 15px; background: var(--card); width: 100%; max-width: 240px; }
+.bulk-counts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.bc-chip { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 20px; }
+.bc-done { background: #e3f5ec; color: var(--present); }
+.bc-pending { background: #fdf2dd; color: var(--leave); }
+.bc-total { background: var(--green-l); color: var(--green-d); }
+[data-theme="midnight"] .bc-done { background: rgba(52,176,122,.2); }
+[data-theme="midnight"] .bc-pending { background: rgba(224,169,59,.2); }
 .bulk-list { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 4px 16px; margin-bottom: 12px; }
 .bulk-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .bulk-row:last-child { border-bottom: 0; }

@@ -702,6 +702,7 @@ function renderBulk() {
       <h2>📞 Next-Class Follow-up</h2>
       <label class="muted" style="font-size:12px;display:block;margin-bottom:4px">Class date</label>
       <select id="bulkWeekSel">${weekOpts}</select>
+      <div id="bulkCounts" class="bulk-counts"></div>
       <div class="muted" style="font-size:12px;margin-top:8px">Set each student's status, then Save all — it syncs to OneDrive.</div>
     </div>
     <div class="bulk-list">${rows}</div>
@@ -711,7 +712,21 @@ function renderBulk() {
     </div>`;
   $('#bulkWeekSel').onchange = e => { bulkWeek = e.target.value; renderBulk(); };
   $('#bulkSave').onclick = saveBulk;
-  $('#bulkQuick').onclick = () => $$('#bulkView [data-bfu]').forEach(s => s.value = 'Confirmed');
+  $('#bulkQuick').onclick = () => { $$('#bulkView [data-bfu]').forEach(s => s.value = 'Confirmed'); updateBulkCounts(); };
+  $$('#bulkView [data-bfu]').forEach(sel => sel.onchange = updateBulkCounts);
+  updateBulkCounts();
+}
+// Completed = follow-up recorded (Confirmed/Tentative/Leave); Pending = "Pending" or not set
+function updateBulkCounts() {
+  const el = $('#bulkCounts'); if (!el) return;
+  let done = 0, pending = 0, total = 0;
+  $$('#bulkView [data-bfu]').forEach(sel => {
+    total++;
+    if (sel.value === 'Pending' || sel.value === '') pending++; else done++;
+  });
+  el.innerHTML = `<span class="bc-chip bc-done">✅ Completed: ${done}</span>
+    <span class="bc-chip bc-pending">⏳ Pending: ${pending}</span>
+    <span class="bc-chip bc-total">${total} active</span>`;
 }
 async function saveBulk() {
   const changed = [];
