@@ -1,4 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="112" fill="#0f6b4f"/>
-  <text x="50%" y="54%" font-size="300" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="serif">۞</text>
+  <!-- 8-point star (rub el hizb) in gold -->
+  <g fill="#e8c45f">
+    <rect x="208" y="92" width="96" height="96" rx="10"/>
+    <rect x="208" y="92" width="96" height="96" rx="10" transform="rotate(45 256 140)"/>
+  </g>
+  <!-- open book (two pages) in white -->
+  <g fill="#ffffff">
+    <path d="M256 252 C 212 234, 152 234, 120 252 L 120 394 C 152 376, 212 376, 256 394 Z"/>
+    <path d="M256 252 C 300 234, 360 234, 392 252 L 392 394 C 360 376, 300 376, 256 394 Z"/>
+  </g>
+  <!-- spine -->
+  <rect x="251" y="252" width="10" height="142" fill="#0f6b4f"/>
+  <!-- page lines -->
+  <g stroke="#0f6b4f" stroke-width="6" stroke-linecap="round" opacity="0.32">
+    <line x1="150" y1="288" x2="230" y2="281"/>
+    <line x1="150" y1="315" x2="230" y2="308"/>
+    <line x1="150" y1="342" x2="230" y2="335"/>
+    <line x1="282" y1="281" x2="362" y2="288"/>
+    <line x1="282" y1="308" x2="362" y2="315"/>
+    <line x1="282" y1="335" x2="362" y2="342"/>
+  </g>
 </svg>

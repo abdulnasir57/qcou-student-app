@@ -32,6 +32,32 @@ function orderedWeeks(weeksList) {
   return [...future, ...past];
 }
 
+/* ---------- Themes ---------- */
+const THEMES = [
+  { id: '', label: 'Emerald (Green)', swatch: '#0f6b4f' },
+  { id: 'royal', label: 'Royal Blue & Gold', swatch: '#1f3a6b' },
+];
+function currentTheme() { try { return localStorage.getItem('hub_theme') || ''; } catch (e) { return ''; } }
+function applyTheme(id) {
+  if (id) document.documentElement.dataset.theme = id; else delete document.documentElement.dataset.theme;
+  try { localStorage.setItem('hub_theme', id); } catch (e) { /* ignore */ }
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', t.swatch);
+  renderThemeMenu();
+}
+function renderThemeMenu() {
+  const m = $('#themeMenu'); if (!m) return;
+  const cur = currentTheme();
+  m.innerHTML = THEMES.map(t => `<div class="theme-opt" data-theme-id="${t.id}">
+    <span class="theme-swatch" style="background:${t.swatch}"></span><span>${esc(t.label)}</span>
+    ${t.id === cur ? '<span class="chk">✓</span>' : ''}</div>`).join('');
+  $$('[data-theme-id]', m).forEach(o => o.onclick = () => { applyTheme(o.dataset.themeId); m.classList.add('hidden'); });
+}
+function toggleThemeMenu() {
+  const m = $('#themeMenu'); if (!m) return;
+  if (m.classList.contains('hidden')) { renderThemeMenu(); m.classList.remove('hidden'); } else m.classList.add('hidden');
+}
+
 /* ============================ DATA LAYER ============================ */
 const Data = {
   async init() {
@@ -730,6 +756,8 @@ function wireShell() {
   $('#signOutBtn').onclick = async () => { await Data.signOut(); location.reload(); };
   const sBtn = $('#syncBtn'); if (sBtn) sBtn.onclick = () => runOneDriveSync();
   const bf = $('#bulkFuBtn'); if (bf) bf.onclick = () => openBulkFollowup();
+  const tb = $('#themeBtn'); if (tb) tb.onclick = e => { e.stopPropagation(); toggleThemeMenu(); };
+  document.addEventListener('click', e => { const m = $('#themeMenu'); if (m && !m.contains(e.target) && e.target.id !== 'themeBtn') m.classList.add('hidden'); });
 }
 
 function populateData(students) {
@@ -758,6 +786,7 @@ async function startApp() {
 }
 
 async function boot() {
+  applyTheme(currentTheme());
   await Data.init();
   if (LIVE && !(await Data.requireAuth())) {
     $('#login').classList.remove('hidden');

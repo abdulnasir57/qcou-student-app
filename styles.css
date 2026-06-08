@@ -17,6 +17,14 @@
   --shadow: 0 1px 3px rgba(20,32,27,.08), 0 6px 20px rgba(20,32,27,.05);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
 }
+/* ---------- THEMES (override the primary palette) ---------- */
+[data-theme="royal"] {
+  --green: #1f3a6b;      /* deep royal navy (primary) */
+  --green-d: #152a4f;
+  --green-l: #e8edf7;
+  --gold: #c9a227;       /* gold accent */
+  --present: #2f8f6b;
+}
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; }
 body { background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.45; }
@@ -40,7 +48,14 @@ button { font-family: inherit; cursor: pointer; }
 .topbar { position: sticky; top: 0; z-index: 20; background: var(--green); color: #fff;
   display: flex; align-items: center; gap: 10px; padding: max(10px, env(safe-area-inset-top)) 14px 10px; }
 .brand { display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0; }
-.brand-mark { font-size: 24px; }
+.brand-mark { font-size: 26px; line-height: 0; }
+.logo-svg { width: 1em; height: 1em; display: inline-block; vertical-align: middle; }
+.theme-menu { position: fixed; right: 12px; top: calc(env(safe-area-inset-top) + 52px); z-index: 40;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 6px; min-width: 190px; }
+.theme-opt { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 9px; cursor: pointer; font-size: 14px; color: var(--ink); }
+.theme-opt:active { background: var(--green-l); }
+.theme-swatch { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0,0,0,.12); flex-shrink: 0; }
+.theme-opt .chk { margin-left: auto; color: var(--green); font-weight: 700; }
 .brand strong { display: block; font-size: 16px; line-height: 1.1; }
 .brand small { font-size: 11px; opacity: .8; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; }
