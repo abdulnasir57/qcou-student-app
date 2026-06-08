@@ -36,6 +36,9 @@ function orderedWeeks(weeksList) {
 const THEMES = [
   { id: '', label: 'Emerald (Green)', swatch: '#0f6b4f' },
   { id: 'royal', label: 'Royal Blue & Gold', swatch: '#1f3a6b' },
+  { id: 'sepia', label: 'Parchment / Sepia', swatch: '#7a5a30' },
+  { id: 'maroon', label: 'Maroon & Gold', swatch: '#7a2533' },
+  { id: 'midnight', label: 'Midnight (Dark)', swatch: '#16211d' },
 ];
 function currentTheme() { try { return localStorage.getItem('hub_theme') || ''; } catch (e) { return ''; } }
 function applyTheme(id) {
