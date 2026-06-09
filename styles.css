@@ -126,8 +126,17 @@ button { font-family: inherit; cursor: pointer; }
 .bc-done { background: #e3f5ec; color: var(--present); }
 .bc-pending { background: #fdf2dd; color: var(--leave); }
 .bc-total { background: var(--green-l); color: var(--green-d); }
-[data-theme="midnight"] .bc-done { background: rgba(52,176,122,.2); }
-[data-theme="midnight"] .bc-pending { background: rgba(224,169,59,.2); }
+.bc-present { background: #e3f5ec; color: var(--present); }
+.bc-absent { background: #fbe6e4; color: var(--absent); }
+.bc-leave { background: #fdf2dd; color: var(--leave); }
+.bc-holiday { background: #e7eef6; color: var(--holiday); }
+.bc-none { background: var(--green-l); color: var(--muted); }
+[data-theme="midnight"] .bc-done,
+[data-theme="midnight"] .bc-present { background: rgba(52,176,122,.2); }
+[data-theme="midnight"] .bc-pending,
+[data-theme="midnight"] .bc-leave { background: rgba(224,169,59,.2); }
+[data-theme="midnight"] .bc-absent { background: rgba(216,88,79,.22); }
+[data-theme="midnight"] .bc-holiday { background: rgba(107,143,181,.25); }
 .bulk-list { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 4px 16px; margin-bottom: 12px; }
 .bulk-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
 .bulk-row:last-child { border-bottom: 0; }

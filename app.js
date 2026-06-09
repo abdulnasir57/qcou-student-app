@@ -749,12 +749,99 @@ async function saveBulk() {
   } catch (e) { toast('Save failed: ' + (e.message || e)); }
 }
 
+/* ============================ BULK CLASS ATTENDANCE ============================ */
+const ATT_BULK_OPTIONS = [['P', 'Present'], ['A', 'Absent'], ['L', 'Leave'], ['H', 'Holiday']];
+let attBulkWeek = null;
+function attBulkWeeks() {
+  const lo = new Date(); lo.setDate(lo.getDate() - 120);
+  const hi = new Date(); hi.setDate(hi.getDate() + 7);
+  const loS = lo.toISOString().slice(0, 10), hiS = hi.toISOString().slice(0, 10);
+  return (META.weeks || []).filter(w => w >= loS && w <= hiS).sort((a, b) => b.localeCompare(a));
+}
+function openAttBulk() {
+  view = 'attbulk';
+  const ws = attBulkWeeks();
+  if (!(attBulkWeek && ws.includes(attBulkWeek))) attBulkWeek = ws.find(w => w <= TODAY) || ws[0] || null;
+  $('#app').classList.add('detail-open');
+  $('#backBtn').classList.add('show');
+  showView('attbulk');
+  renderAttBulk();
+  window.scrollTo(0, 0);
+}
+function renderAttBulk() {
+  const ws = attBulkWeeks();
+  if (!attBulkWeek) attBulkWeek = ws.find(w => w <= TODAY) || ws[0];
+  if (!attBulkWeek) { $('#attBulkView').innerHTML = '<p class="empty-note">No class dates.</p>'; return; }
+  const weekOpts = ws.map(w => `<option value="${w}" ${w === attBulkWeek ? 'selected' : ''}>${fmtDate(w)}${w === TODAY ? ' (today)' : ''}</option>`).join('');
+  const actives = STUDENTS.filter(s => s.status !== 'Drop-Out').sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+  const rows = actives.map(s => {
+    const v = (s.attendance || {})[attBulkWeek] || '';
+    const extra = v && !ATT_BULK_OPTIONS.some(o => o[0] === v) ? `<option selected>${esc(v)}</option>` : '';
+    const sel = `<select data-batt="${esc(s.id)}"><option value="" ${v === '' ? 'selected' : ''}>—</option>${extra}` +
+      ATT_BULK_OPTIONS.map(([code, label]) => `<option value="${code}" ${v === code ? 'selected' : ''}>${label}</option>`).join('') + `</select>`;
+    return `<div class="bulk-row"><span class="bulk-name">${esc(s.name)}</span>${sel}</div>`;
+  }).join('');
+  $('#attBulkView').innerHTML = `
+    <div class="bulk-head">
+      <h2>🗓️ Class Attendance</h2>
+      <label class="muted" style="font-size:12px;display:block;margin-bottom:4px">Class date</label>
+      <select id="attWeekSel">${weekOpts}</select>
+      <div id="attCounts" class="bulk-counts"></div>
+      <div class="muted" style="font-size:12px;margin-top:8px">Mark each student, then Save all — it syncs to OneDrive.</div>
+    </div>
+    <div class="bulk-list">${rows}</div>
+    <div class="save-bar" style="position:sticky;bottom:0;z-index:5">
+      <button class="btn btn-primary" id="attSave">Save all</button>
+      <button class="btn btn-ghost" id="attQuick">Set all Present</button>
+    </div>`;
+  $('#attWeekSel').onchange = e => { attBulkWeek = e.target.value; renderAttBulk(); };
+  $('#attSave').onclick = saveAttBulk;
+  $('#attQuick').onclick = () => { $$('#attBulkView [data-batt]').forEach(s => s.value = 'P'); updateAttCounts(); };
+  $$('#attBulkView [data-batt]').forEach(sel => sel.onchange = updateAttCounts);
+  updateAttCounts();
+}
+function updateAttCounts() {
+  const el = $('#attCounts'); if (!el) return;
+  const c = { P: 0, A: 0, L: 0, H: 0, none: 0 };
+  $$('#attBulkView [data-batt]').forEach(sel => {
+    const v = sel.value;
+    if (v === 'P') c.P++; else if (v === 'A') c.A++; else if (v === 'L') c.L++; else if (v === 'H') c.H++; else c.none++;
+  });
+  el.innerHTML = `<span class="bc-chip bc-present">Present: ${c.P}</span>
+    <span class="bc-chip bc-absent">Absent: ${c.A}</span>
+    <span class="bc-chip bc-leave">Leave: ${c.L}</span>
+    ${c.H ? `<span class="bc-chip bc-holiday">Holiday: ${c.H}</span>` : ''}
+    <span class="bc-chip bc-none">Not marked: ${c.none}</span>`;
+}
+async function saveAttBulk() {
+  const changed = [];
+  $$('#attBulkView [data-batt]').forEach(sel => {
+    const s = BYID[sel.dataset.batt]; if (!s) return;
+    const cur = (s.attendance || {})[attBulkWeek] || '';
+    if (sel.value !== cur) {
+      s.attendance = s.attendance || {};
+      if (sel.value) s.attendance[attBulkWeek] = sel.value; else delete s.attendance[attBulkWeek];
+      recomputeAttendance(s);
+      changed.push(s);
+    }
+  });
+  if (!changed.length) { toast('No changes to save'); return; }
+  toast('Saving ' + changed.length + '…');
+  try {
+    for (const s of changed) { await Data.save(s); BYID[s.id] = s; }
+    toast(changed.length + ' student(s) marked ✓');
+    scheduleSync();
+    renderRoster();
+  } catch (e) { toast('Save failed: ' + (e.message || e)); }
+}
+
 /* ============================ NAV / BOOT ============================ */
 function showView(v) {
   $('#rosterView').classList.toggle('hidden', v !== 'roster');
   $('#dashboardView').classList.toggle('hidden', v !== 'dashboard');
   $('#detailView').classList.toggle('hidden', v !== 'detail');
   $('#bulkView').classList.toggle('hidden', v !== 'bulk');
+  $('#attBulkView').classList.toggle('hidden', v !== 'attbulk');
 }
 function goTab(v) {
   view = v; currentId = null;
@@ -774,6 +861,7 @@ function wireShell() {
   $('#signOutBtn').onclick = async () => { await Data.signOut(); location.reload(); };
   const sBtn = $('#syncBtn'); if (sBtn) sBtn.onclick = () => runOneDriveSync();
   const bf = $('#bulkFuBtn'); if (bf) bf.onclick = () => openBulkFollowup();
+  const ba = $('#bulkAttBtn'); if (ba) ba.onclick = () => openAttBulk();
   const tb = $('#themeBtn'); if (tb) tb.onclick = e => { e.stopPropagation(); toggleThemeMenu(); };
   document.addEventListener('click', e => { const m = $('#themeMenu'); if (m && !m.contains(e.target) && e.target.id !== 'themeBtn') m.classList.add('hidden'); });
 }

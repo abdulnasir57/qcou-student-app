@@ -12,7 +12,7 @@
   <link rel="icon" href="icon.svg" />
   <link rel="manifest" href="manifest.json" />
   <title>Abdul Nasir's Halqa Hub</title>
-  <link rel="stylesheet" href="styles.css?v=20260608d" />
+  <link rel="stylesheet" href="styles.css?v=20260608e" />
   <script>try{var t=localStorage.getItem('hub_theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body>
@@ -69,6 +69,7 @@
           <option value="nabawi">Sort: Nabawi score</option>
         </select>
       </div>
+      <button id="bulkAttBtn" class="bulk-cta">🗓️ Mark Class Attendance</button>
       <button id="bulkFuBtn" class="bulk-cta">📞 Mark Next-Class Follow-up</button>
       <div id="rosterCount" class="roster-count"></div>
       <div id="roster" class="roster"></div>
@@ -82,6 +83,9 @@
 
     <!-- BULK FOLLOW-UP VIEW -->
     <section id="bulkView" class="view hidden"></section>
+
+    <!-- BULK ATTENDANCE VIEW -->
+    <section id="attBulkView" class="view hidden"></section>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -90,6 +94,6 @@
   <script src="config.js" onerror="window.__noConfig=true"></script>
   <!-- Supabase client (only used in live mode) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20260608d"></script>
+  <script src="app.js?v=20260608e"></script>
 </body>
 </html>
