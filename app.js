@@ -156,6 +156,36 @@ function scheduleSync() {          // debounce bursts of edits into one sync
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(runOneDriveSync, 2500);
 }
+
+/* ---- Live updates: refresh the open app when the cloud data changes (e.g. Excel → app) ---- */
+let _rtTimer = null;
+function detailEditing() {            // don't clobber a section the user is editing
+  const root = $('#detailView'); if (!root) return false;
+  return $$('[data-savebar]', root).some(b => !b.classList.contains('hidden'));
+}
+function onRealtime(payload) {
+  const row = payload && (payload.new || payload.eventType === 'DELETE' ? payload.old : null);
+  const data = row && row.data; if (!data || !data.id) return;
+  if (payload.eventType === 'DELETE') return;   // deletions are not used in this app
+  BYID[data.id] = data;
+  const i = STUDENTS.findIndex(s => s.id === data.id);
+  if (i >= 0) STUDENTS[i] = data; else STUDENTS.push(data);
+  clearTimeout(_rtTimer);
+  _rtTimer = setTimeout(() => {
+    if (view === 'roster') renderRoster();
+    else if (view === 'dashboard') renderDashboard();
+    else if (view === 'detail' && currentId && !detailEditing()) renderDetail();
+    updateSyncInfo();
+  }, 600);
+}
+function setupRealtime() {
+  if (!LIVE || !sb) return;
+  try {
+    sb.channel('students-rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, onRealtime)
+      .subscribe();
+  } catch (e) { /* realtime optional */ }
+}
 function relTime(iso) {
   if (!iso) return 'never';
   const d = new Date(iso); if (isNaN(d)) return iso;
@@ -889,6 +919,7 @@ async function startApp() {
   populateData(students);
   goTab('roster');
   updateSyncInfo();
+  setupRealtime();
 }
 
 async function boot() {
