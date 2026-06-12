@@ -889,7 +889,7 @@ function renderMulaqatTracker() {
   const needCount = all.filter(x => isStale(x.last)).length;
   let list = (mulaqatSort === 'needs') ? all.filter(x => isStale(x.last)) : all.slice();
   if (mulaqatSort === 'count_asc') list.sort((a, b) => a.n - b.n || (a.s.name || '').localeCompare(b.s.name || ''));
-  else if (mulaqatSort === 'oldest' || mulaqatSort === 'needs') list.sort((a, b) => (a.last || '').localeCompare(b.last || '') || a.n - b.n);  // never-met ('') first, then oldest
+  else if (mulaqatSort === 'needs') list.sort((a, b) => (a.last || '').localeCompare(b.last || '') || a.n - b.n);  // never-met ('') first, then oldest
   else list.sort((a, b) => b.n - a.n || (a.s.name || '').localeCompare(b.s.name || ''));
   const seg = (id, label) => `<button class="mtk-seg${mulaqatSort === id ? ' active' : ''}" data-msort="${id}">${label}</button>`;
   const rows = list.map(({ s, n, last }) => {
@@ -904,7 +904,7 @@ function renderMulaqatTracker() {
     <div class="bulk-head">
       <h2>🤝 Physical Mulaqat Tracker</h2>
       <div class="muted" style="font-size:12px;margin-bottom:8px">${all.length} active · ${totalMeetings} meetings logged${needCount ? ` · <span style="color:var(--absent);font-weight:600">⚠️ ${needCount} need a visit</span>` : ''} · tap a name to log a meeting</div>
-      <div class="mtk-segs">${seg('count_desc', 'Meetings: High→Low')}${seg('count_asc', 'Low→High')}${seg('oldest', '📅 Oldest visit')}${seg('needs', '⚠️ Needs visit')}</div>
+      <div class="mtk-segs">${seg('count_desc', 'Meetings: High→Low')}${seg('count_asc', 'Low→High')}${seg('needs', '⚠️ Needs visit')}</div>
     </div>
     <div class="bulk-list">${rows}</div>`;
   $$('#mulaqatView [data-msort]').forEach(b => b.onclick = () => { mulaqatSort = b.dataset.msort; renderMulaqatTracker(); });
