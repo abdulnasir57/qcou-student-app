@@ -142,6 +142,22 @@ button { font-family: inherit; cursor: pointer; }
 .bulk-row:last-child { border-bottom: 0; }
 .bulk-name { flex: 1; font-size: 14px; font-weight: 600; }
 .bulk-row select { flex: 0 0 140px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; background: var(--card); }
+/* Mulaqat tracker */
+.mtk-segs { display: flex; flex-wrap: wrap; gap: 6px; }
+.mtk-seg { background: var(--green-l); color: var(--green-d); border: 0; padding: 8px 11px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.mtk-seg.active { background: var(--green); color: #fff; }
+.mtk-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.mtk-row:last-child { border-bottom: 0; }
+.mtk-row:active { opacity: .7; }
+.mtk-main { flex: 1; min-width: 0; }
+.mtk-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mtk-last { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.mtk-count { text-align: center; flex-shrink: 0; min-width: 56px; }
+.mtk-count b { display: block; font-size: 20px; color: var(--green-d); }
+.mtk-count span { font-size: 10px; color: var(--muted); }
+.mtk-row.needs-visit { background: #fdf2dd; border-radius: 10px; padding-left: 10px; padding-right: 10px; }
+.mtk-row.needs-visit .mtk-last { color: var(--absent); font-weight: 600; }
+[data-theme="midnight"] .mtk-row.needs-visit { background: rgba(224,169,59,.18); }
 
 /* ---------- ROSTER ---------- */
 .roster { display: grid; grid-template-columns: 1fr; gap: 10px; }

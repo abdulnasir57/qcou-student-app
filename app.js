@@ -865,6 +865,46 @@ async function saveAttBulk() {
   } catch (e) { toast('Save failed: ' + (e.message || e)); }
 }
 
+/* ============================ PHYSICAL MULAQAT TRACKER ============================ */
+function mulaqatMeetingDates(s) {
+  return (s.mulaqat || []).filter(m => m.date && m.details && (MULAQAT_DONE_SET.includes(m.details) || /done/i.test(m.details))).map(m => m.date).sort();
+}
+function lastMeetingDate(s) { const d = mulaqatMeetingDates(s); return d.length ? d[d.length - 1] : null; }
+let mulaqatSort = 'count_desc';
+function openMulaqatTracker() {
+  view = 'mulaqat';
+  $('#app').classList.add('detail-open');
+  $('#backBtn').classList.add('show');
+  showView('mulaqat');
+  renderMulaqatTracker();
+  window.scrollTo(0, 0);
+}
+function renderMulaqatTracker() {
+  const list = STUDENTS.filter(s => s.status !== 'Drop-Out').map(s => ({ s, n: mulaqatDone(s), last: lastMeetingDate(s) }));
+  if (mulaqatSort === 'count_asc') list.sort((a, b) => a.n - b.n || (a.s.name || '').localeCompare(b.s.name || ''));
+  else if (mulaqatSort === 'oldest') list.sort((a, b) => (a.last || '') .localeCompare(b.last || '') || a.n - b.n);  // never-met ('') first, then oldest
+  else list.sort((a, b) => b.n - a.n || (a.s.name || '').localeCompare(b.s.name || ''));
+  const totalMeetings = list.reduce((t, x) => t + x.n, 0);
+  const today = TODAY;
+  const seg = (id, label) => `<button class="mtk-seg${mulaqatSort === id ? ' active' : ''}" data-msort="${id}">${label}</button>`;
+  const rows = list.map(({ s, n, last }) => {
+    let stale = false; if (mulaqatSort === 'oldest') { if (!last) stale = true; else { const days = (Date.parse(today) - Date.parse(last)) / 86400000; if (days > 45) stale = true; } }
+    const lastTxt = last ? 'Last: ' + fmtDate(last) : 'Never met';
+    return `<div class="mtk-row${stale ? ' needs-visit' : ''}" data-id="${esc(s.id)}">
+      <div class="mtk-main"><div class="mtk-name">${esc(s.name)}</div><div class="mtk-last">${lastTxt}</div></div>
+      <div class="mtk-count"><b>${n}</b><span>meetings</span></div></div>`;
+  }).join('');
+  $('#mulaqatView').innerHTML = `
+    <div class="bulk-head">
+      <h2>🤝 Physical Mulaqat Tracker</h2>
+      <div class="muted" style="font-size:12px;margin-bottom:10px">${list.length} active students · ${totalMeetings} meetings logged · tap a name to log a meeting</div>
+      <div class="mtk-segs">${seg('count_desc', 'Meetings: High→Low')}${seg('count_asc', 'Low→High')}${seg('oldest', '📅 Oldest visit (plan)')}</div>
+    </div>
+    <div class="bulk-list">${rows}</div>`;
+  $$('#mulaqatView [data-msort]').forEach(b => b.onclick = () => { mulaqatSort = b.dataset.msort; renderMulaqatTracker(); });
+  $$('#mulaqatView .mtk-row').forEach(r => r.onclick = () => openDetail(r.dataset.id));
+}
+
 /* ============================ NAV / BOOT ============================ */
 function showView(v) {
   $('#rosterView').classList.toggle('hidden', v !== 'roster');
@@ -872,6 +912,7 @@ function showView(v) {
   $('#detailView').classList.toggle('hidden', v !== 'detail');
   $('#bulkView').classList.toggle('hidden', v !== 'bulk');
   $('#attBulkView').classList.toggle('hidden', v !== 'attbulk');
+  $('#mulaqatView').classList.toggle('hidden', v !== 'mulaqat');
 }
 function goTab(v) {
   view = v; currentId = null;
@@ -892,6 +933,7 @@ function wireShell() {
   const sBtn = $('#syncBtn'); if (sBtn) sBtn.onclick = () => runOneDriveSync();
   const bf = $('#bulkFuBtn'); if (bf) bf.onclick = () => openBulkFollowup();
   const ba = $('#bulkAttBtn'); if (ba) ba.onclick = () => openAttBulk();
+  const mt = $('#mulaqatBtn'); if (mt) mt.onclick = () => openMulaqatTracker();
   const tb = $('#themeBtn'); if (tb) tb.onclick = e => { e.stopPropagation(); toggleThemeMenu(); };
   document.addEventListener('click', e => { const m = $('#themeMenu'); if (m && !m.contains(e.target) && e.target.id !== 'themeBtn') m.classList.add('hidden'); });
 }
