@@ -155,6 +155,8 @@ button { font-family: inherit; cursor: pointer; }
 .mtk-count { text-align: center; flex-shrink: 0; min-width: 56px; }
 .mtk-count b { display: block; font-size: 20px; color: var(--green-d); }
 .mtk-count span { font-size: 10px; color: var(--muted); }
+.mtk-flag { display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 700; color: var(--absent); background: #fbe6e4; padding: 2px 7px; border-radius: 20px; vertical-align: 1px; white-space: nowrap; }
+[data-theme="midnight"] .mtk-flag { background: rgba(216,88,79,.22); }
 .mtk-row.needs-visit { background: #fdf2dd; border-radius: 10px; padding-left: 10px; padding-right: 10px; }
 .mtk-row.needs-visit .mtk-last { color: var(--absent); font-weight: 600; }
 [data-theme="midnight"] .mtk-row.needs-visit { background: rgba(224,169,59,.18); }
