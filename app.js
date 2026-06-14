@@ -1001,7 +1001,7 @@ async function boot() {
   await Data.init();
   if (LIVE && !(await Data.requireAuth())) {
     $('#login').classList.remove('hidden');
-    try { if (sessionStorage.getItem('hub_idle_logout')) { sessionStorage.removeItem('hub_idle_logout'); $('#loginError').textContent = 'Signed out after 10 minutes of inactivity — please sign in again.'; } } catch (e) {}
+    try { if (sessionStorage.getItem('hub_idle_logout')) { sessionStorage.removeItem('hub_idle_logout'); $('#loginError').textContent = 'Signed out due to inactivity — please sign in again.'; } } catch (e) {}
     $('#loginForm').onsubmit = async e => {
       e.preventDefault();
       $('#loginError').textContent = '';
