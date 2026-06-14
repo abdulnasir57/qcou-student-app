@@ -955,6 +955,31 @@ function populateData(students) {
   $('#brandSub').textContent = (META.batch || '') + ' · ' + STUDENTS.length + ' students';
 }
 
+// ---- Auto sign-out after inactivity (live mode only) ----
+const IDLE_LIMIT_MS = 10 * 60 * 1000;   // sign out after 10 min with no activity
+let lastActivity = Date.now();
+let idleTimerStarted = false;
+function markActivity() { lastActivity = Date.now(); }
+async function autoSignOut() {
+  if (!LIVE) return;
+  try { sessionStorage.setItem('hub_idle_logout', '1'); } catch (e) {}
+  try { await Data.signOut(); } catch (e) {}
+  location.reload();
+}
+function checkIdle() { if (LIVE && Date.now() - lastActivity >= IDLE_LIMIT_MS) autoSignOut(); }
+function startIdleWatch() {
+  if (!LIVE || idleTimerStarted) return;
+  idleTimerStarted = true;
+  lastActivity = Date.now();
+  ['mousedown', 'keydown', 'touchstart', 'scroll', 'click', 'mousemove'].forEach(ev =>
+    document.addEventListener(ev, markActivity, { passive: true, capture: true }));
+  // Re-check when the app/tab regains focus — covers a phone app backgrounded past the limit
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkIdle(); });
+  window.addEventListener('focus', checkIdle);
+  // Periodic check for the foreground-idle case (timers throttle in background; focus/visibility cover that)
+  setInterval(checkIdle, 30 * 1000);
+}
+
 async function startApp() {
   $('#login').classList.add('hidden');
   $('#app').classList.remove('hidden');
@@ -968,6 +993,7 @@ async function startApp() {
   goTab('roster');
   updateSyncInfo();
   setupRealtime();
+  startIdleWatch();
 }
 
 async function boot() {
@@ -975,6 +1001,7 @@ async function boot() {
   await Data.init();
   if (LIVE && !(await Data.requireAuth())) {
     $('#login').classList.remove('hidden');
+    try { if (sessionStorage.getItem('hub_idle_logout')) { sessionStorage.removeItem('hub_idle_logout'); $('#loginError').textContent = 'Signed out after 10 minutes of inactivity — please sign in again.'; } } catch (e) {}
     $('#loginForm').onsubmit = async e => {
       e.preventDefault();
       $('#loginError').textContent = '';
